@@ -1,0 +1,112 @@
+# Задаем список согласных и гласных в языке, классифицируем гласные на передние, нейтральные и задние. 
+define Consonant b | c | d | f | g | h | j | k | l | m | n | p | q | r | s | t | v | w | x | z ;
+define FrontVowel ä | ö | y ;
+define NeutralVowel e | i ;
+define BackVowel a | o | u ;
+define Vowel FrontVowel | NeutralVowel | BackVowel | A | E;
+define Letter Vowel | Consonant;
+
+# Задаем список падежей и чисел в языке.  
+# В задании сказано добавить оставшиеся локативные падежи. Согласно грамматике, в финском всего 6 локативных падежей: elative, illative, adessive, ablative + allative, innessive, которые уже есть в списке.
+define Case "+Nom" | "+Gen" | "+Part" | "+Inn" | "+All" | "+Ell" | "+Ill" | "+Add" | "+Abl";
+define Number "+Sg" | "+Pl" ; 
+
+# Определяяем классы передних и задних основ (передние + нейтральные, задние + нейтральные, если в основе только нейтральные - тоже переднего ряда)
+define FrontStem [Consonant* [ FrontVowel | NeutralVowel ] ]+ Consonant*;
+define BackStem [Consonant* [ BackVowel | NeutralVowel ] ]* [Consonant* BackVowel] [Consonant* [ BackVowel | NeutralVowel ] ]* Consonant*;
+define Stem Letter+;
+
+define Input Stem Number Case;
+
+# Задаем, что в номинативе число и падеж выражается кумулятивно - нулем или 't'.
+define NomPl "+Pl" "+Nom" -> "^" t || _ ;
+define NomSg "+Sg" "+Nom" -> "^" || _ ;
+define Nominatives NomPl .o. NomSg ;
+
+# Задаем, как маркируется генетив (аффикс -en, с основами на дифтонги и долгие гласные -den)
+define GenDen "+Gen" -> d e n || Vowel Vowel "+Pl" _ ;
+define Gen "+Gen" -> E n || _ ;
+define Genetive GenDen .o. Gen ;
+
+# Задаем, как маркируется партитив (аффикс -A, c основами на дифтонги и долгие гласные - tA)
+define PartTa "+Part" -> t A || [ Consonant Vowel Vowel | Consonant ] Number _ ;
+define PartA "+Part" -> A || _ ;
+
+
+
+#ТУТ ПЫТАЕМСЯ ОПРЕДЕЛИТЬ ЛОКАТИВНЫЕ ПАДЕЖИ
+
+define LocativeCases "+Inn" -> s s A , "+All" -> l l e , "+Ell" -> s t A , "+Add" -> s t A, "+Abl" -> l t A || _ ;
+define OtherCases PartTa .o. PartA .o. LocativeCases ;
+
+#А ТУТ ИЛЛАТИВ
+
+#Задаем единственное число. Выбор конструкции зависит от набора окончаний основы (VC - Vn; VV - hVn)
+define Illän "+Sg" "+Ill" ->  ä n || Vowel + Consonant + ä _ ;
+define Illön "+Sg" "+Ill" ->  ö n || Vowel + Consonant + ö _ ;
+define Illyn "+Sg" "+Ill" ->  y n || Vowel + Consonant + y _ ;
+define Illen "+Sg" "+Ill" ->  e n || Vowel + Consonant + e _ ;
+define Illin "+Sg" "+Ill" ->  i n || Vowel + Consonant + i _ ;
+define Illan "+Sg" "+Ill" ->  a n || Vowel + Consonant + e* a _ ;
+define Illon "+Sg" "+Ill" ->  o n || Vowel + Consonant + o _ ;
+define Illun "+Sg" "+Ill" ->  u n || Vowel + Consonant + u _ ;
+
+define Illhän "+Sg" "+Ill" -> h ä n || .#. Consonant* Vowel* ä _ ;
+define Illhön "+Sg" "+Ill" -> h ö n || .#. Consonant* Vowel* ö _ ;
+define Illhyn "+Sg" "+Ill" -> h y n || .#. Consonant* Vowel* y _ ;
+define Illhen "+Sg" "+Ill" -> h e n || .#. Consonant* Vowel* e _ ;
+define Illhin "+Sg" "+Ill" -> h i n || .#. Consonant* Vowel* i _ ;
+define Illhan "+Sg" "+Ill" -> h a n || .#. Consonant* Vowel* a _ ;
+define Illhon "+Sg" "+Ill" -> h o n || .#. Consonant* Vowel* o _ ;
+define Illhun "+Sg" "+Ill" -> h u n || .#. Consonant* Vowel* u _ ;
+
+#Задаем множестенное число. Если основа заканчивается на гласный - окончание -hin, на согласный - in. После полиссилабической основы, оканчивающейся на длинный гласны может быть как -hin, так и -seen (раз это свободная вариативность, чтобы не усложнять себе жизнь, пусть везде будет -hin) 
+define IllPlhin "+Ill" -> h i n || .#. Consonant* Vowel + "+Pl" _ ;
+define IllPlhin2 "+Ill" -> h i n || Consonant Vowel "+Pl" _ ;
+define IllPlin "+Ill" -> i n || Consonant "+Pl" _ ;
+
+define Illative Illän .o. Illön .o. Illyn .o. Illen .o. Illin .o. Illan .o. Illon .o. Illun .o. Illhän .o. Illhön .o. Illhyn .o. Illhen .o. Illhin .o. Illhan .o. Illhon .o. Illhun .o. IllPlhin .o. IllPlin .o. IllPlhin2;
+
+
+
+# Задаем числовое маркирование - сингулярис выражается нулем, плюралис - аффиксом 'i'. 
+# + определяем исключения из правил. Во множественном числе перед -i-: OmitA - конечная гласная ä и i опускаются, 
+# Ai2Oi - в двусложных словах конечноая а замняется на о, если первая гласная основы - а, е или i, Ai2i - опускаем аб если первая гласная основы - o  или u.
+define Sg "+Sg" -> "^" ;
+define OmitA ä -> 0, i -> 0 || _ "+Pl";
+define Ai2Oi a -> o || [ a | e | i ] Vowel* Consonant+ _ "+Pl";
+define Ai2i a -> 0 || [ o | u ] Vowel* Consonant+ _ "+Pl";
+define OmitFirst Vowel -> 0 || _ Vowel "+Pl" Consonant;
+define Pl "+Pl" -> "^" i || _ ;
+
+define NumberInfl Sg .o. OmitA .o. Ai2i .o. Ai2Oi .o. OmitFirst .o. Pl ;
+
+# JotPl - a stem with a labial vowel -o, -u, -y, -ö is invariable; plural i becomes j between vowels
+# Harmony(Back/Front) - задаем замену ряда аффиксального согласного в зависимости от ряда согласного в основе, так как они ассимилируются
+define JotPl i -> j || Vowel "^"* _ "^"* Vowel ;
+define HarmonyBack A -> a || BackStem "^" Letter* _;
+define HarmonyFront A -> ä || FrontStem "^" Letter* _;
+
+define Phonetics JotPl .o. HarmonyBack .o. HarmonyFront ;
+
+# Задаем правила чередования основ в случаях, когда последний слог закрывается + опущение гласной на стыке основы и аффикса (E) если основа заканчивается гласной
+define DoublePTK p p -> p , t t -> t , k k -> k || Letter _ "^"* Vowel "^"* Consonant [ .#. | Consonant ] ;
+define SingleP p -> v || Vowel _ "^"* Vowel "^"* Consonant [ .#. | Consonant ] ;
+define SingleTK t -> d , k -> 0 || Letter _ "^"* Vowel "^"* Consonant [ .#. | Consonant ] ; 
+define TwoLetter m p -> m m , n t -> n n , n k -> n g , l t -> l l , r t -> r r || Letter _ "^"* Vowel "^"* Consonant [ .#. | Consonant ] ;
+define ThreeLetter l k e -> l j e , r k e -> r j e , h k e -> h j e , u k u -> u v u || Letter _ "^"* Consonant [ .#. | Consonant ] ;
+define N2M i n -> i m , t ö n -> t t ö m || _ "^" Vowel;
+define EOmit E -> 0 || Vowel "^" _;
+define EReal E -> e || _;
+
+define Alternations N2M  .o. EOmit .o. EReal .o. ThreeLetter .o. TwoLetter .o. SingleP .o. SingleTK .o. DoublePTK ;
+
+#Создаем класс аффиксов (все окончания - падежные и числовые)
+define Affixes Nominatives .o. Genetive .o. OtherCases .o. Illative .o. NumberInfl .o. Alternations .o. Phonetics ;
+
+# Стираем границы 
+define Cleanup "^" -> 0 || _ ;
+
+#С помощью оператора композиции собираем все грамматические правила, которые мы задали прежде
+define Grammar Input .o. Affixes .o. Cleanup ;
+push Grammar
